@@ -1,11 +1,15 @@
 package core;
 
+import com.google.gson.annotations.Expose;
+
 import java.util.ArrayList;
 import java.util.List;
 
 public class Line{
     private String number;
     private String name;
+
+    @Expose(serialize = true, deserialize = false)
     private List<Station> stations;
 
     public Line(String number, String name) {
