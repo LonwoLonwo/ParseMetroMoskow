@@ -1,8 +1,12 @@
 package core;
 
+import com.google.gson.annotations.Expose;
+
 public class Station
 {
+
     private Line line;
+    @Expose
     private String name;
 
     public Station(String name, Line line)
@@ -24,6 +28,6 @@ public class Station
     @Override
     public String toString()
     {
-        return name + " - " + line.getName();
+        return name;
     }
 }

@@ -9,18 +9,20 @@ import org.jsoup.select.Elements;
 
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.io.Writer;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class Main {
 
-    public static final String filePath = "F:\\Java Projects\\ParseMetroMoskow\\src\\main\\resources\\mapMetro.json";
+    private static final String filePath = "F:\\Java Projects\\ParseMetroMoskow\\src\\main\\resources\\mapMetro4.json";
+    private static ArrayList<Line> lines = new ArrayList<>();
+    private static TreeSet<Station> stations;
+    private static PojoForJson pFJ = new PojoForJson();
 
     public static void main(String[] args) throws IOException {
         Document page = getPage();
@@ -29,10 +31,9 @@ public class Main {
         Element tBody = tableStandard.select("tbody").first();
         Elements tr = tBody.select("tr");
 
-        ArrayList<Line> lines = new ArrayList<>();
-        ArrayList<Station> stations = new ArrayList<>();
+        stations = new TreeSet<>(Comparator.comparing(Station::getName));
 
-        GsonBuilder builder = new GsonBuilder();
+        GsonBuilder builder = new GsonBuilder().excludeFieldsWithoutExposeAnnotation();
         Gson gson = builder.create();
 
         for(int i = 1; i < tr.size(); i++){
@@ -47,37 +48,57 @@ public class Main {
                 else{
                     line = new Line(lineNumber, lineName);
                     lines.add(line);
+                    String colorNameAttr = tr.get(i).select("td").get(0).attr("style");
+                    if(!colorNameAttr.isEmpty()) {
+                        String colorName = colorNameAttr.substring(colorNameAttr.indexOf("#"));
+                        System.out.println(line.getName() + " " + colorName);
+                        line.setColor(colorName);
+                    }
+                    pFJ.addLines(line);
                 }
             }
             else{
                 line = new Line(lineNumber, lineName);
                 lines.add(line);
+                String colorNameAttr = tr.get(i).select("td").get(0).attr("style");
+                if(!colorNameAttr.isEmpty()) {
+                    String colorName = colorNameAttr.substring(colorNameAttr.indexOf("#"));
+                    System.out.println(line.getName() + " " + colorName);
+                    line.setColor(colorName);
+                    pFJ.addLines(line);
+                }
             }
-            //gson.toJson(line, new FileWriter("src\\main\\resources\\mapMetro.json"));
             if(tr.get(i).select("td").get(1).select("span").size() == 1){
                 stationName = tr.get(i).select("td").get(1).select("span").text();
             }
             else{
                 stationName = tr.get(i).select("td").get(1).text();
             }
-            stations.add(new Station(stationName, line));
+            Station station = new Station(stationName, line);
+            stations.add(station);
+            line.addStation(station);
         }
 
         Map<String, ArrayList<Line>> map = new HashMap<>();
         map.put("lines", lines);
 
-
-        try(Writer writer = new FileWriter(filePath, true)){
-            gson.toJson(map, writer);
+        for(Line lns : lines){
+            List<Station> stat = lns.getStations();
+            String[] stationsNames = new String[stat.size()];
+            for(int i = 0; i < stat.size(); i++){
+                stationsNames[i] = stat.get(i).getName();
+            }
+            pFJ.addStations(lns.getNumber(), stationsNames);
         }
-        //String jString = gson.toJson(lines);
 
-        //System.out.println(jString);
+        addConnections(tr);
+
+        try(Writer writer = new FileWriter(filePath)){
+            gson.toJson(pFJ, writer);
+        }
+
         //lines.forEach(System.out::println);
         //stations.forEach(System.out::println);
-
-
-
     }
 
     private static Document getPage() throws IOException {
@@ -101,5 +122,51 @@ public class Main {
             e.printStackTrace();
         }
         return builder.toString();
+    }
+
+    private static void addConnections(Elements trElement){
+        for(int i = 1; i < trElement.size(); i++) {
+            String stationName;
+            if(trElement.get(i).select("td").get(1).select("span").size() == 1){
+                stationName = trElement.get(i).select("td").get(1).select("span").text();
+            }
+            else{
+                stationName = trElement.get(i).select("td").get(1).text();
+            }
+            Station station = null;
+            for(Station st : stations){
+                if(st.getName().equals(stationName)){
+                    station = st;
+                }
+            }
+            ArrayList<Station> connectStations = new ArrayList<>();
+            if (!(trElement.get(i).select("td").get(3).attr("data-sort-value").equals("Infinity"))) {
+                Elements elements = trElement.get(i).select("td").get(3).select("span");
+                if (elements.size() == 1) {
+                    String attr = elements.get(1).attr("a[href]");
+                    String connectionStationName = attrToName(attr);
+                    Station connectStation = null;
+                    for(Station st : stations){
+                        if(st.getName().equals(connectionStationName)){
+                            connectStation = st;
+                        }
+                    }
+                    connectStations.add(connectStation);
+                    connectStations.add(station);
+                }
+            }
+            pFJ.addConnections(connectStations);
+        }
+    }
+
+    private static String attrToName(String attr){
+        String attrCrop = attr.substring(attr.lastIndexOf("/")+1, attr.indexOf("(")-1);
+        String connectionStationName = null;
+        try {
+            connectionStationName = java.net.URLDecoder.decode(attrCrop, StandardCharsets.UTF_8.name());
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+        return connectionStationName;
     }
 }
