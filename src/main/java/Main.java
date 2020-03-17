@@ -34,12 +34,12 @@ public class Main {
         GsonBuilder builder = new GsonBuilder().excludeFieldsWithoutExposeAnnotation();
         Gson gson = builder.create();
 
-        for(int y = 0; y < tableStandard.size(); y++) {
-            Element tBodyUnderground = tableStandard.get(y).select("tbody").first();
+        for (Element value : tableStandard) {
+            Element tBodyUnderground = value.select("tbody").first();
             Elements trUnderground = tBodyUnderground.select("tr");
             for (int i = 1; i < trUnderground.size(); i++) {
                 String stationName;
-                if(!(trUnderground.get(i).select("td").select("span").isEmpty())) {
+                if (!(trUnderground.get(i).select("td").select("span").isEmpty())) {
                     String lineNumber = trUnderground.get(i).select("td").select("span").get(0).text();
                     String lineName = trUnderground.get(i).select("td").get(0).select("a[href]").attr("title");
                     Line line;
@@ -52,7 +52,6 @@ public class Main {
                             String colorNameAttr = trUnderground.get(i).select("td").get(0).attr("style");
                             if (!colorNameAttr.isEmpty()) {
                                 String colorName = colorNameAttr.substring(colorNameAttr.indexOf("#"));
-                                System.out.println(line.getName() + " " + colorName);
                                 line.setColor(colorName);
                             }
                             pFJ.addLines(line);
@@ -63,7 +62,6 @@ public class Main {
                         String colorNameAttr = trUnderground.get(i).select("td").get(0).attr("style");
                         if (!colorNameAttr.isEmpty()) {
                             String colorName = colorNameAttr.substring(colorNameAttr.indexOf("#"));
-                            System.out.println(line.getName() + " " + colorName);
                             line.setColor(colorName);
                             pFJ.addLines(line);
                         }
@@ -78,11 +76,17 @@ public class Main {
                     line.addStation(station);
                 }
             }
-
+            //addConnections(trUnderground);
         }
 
-        //Map<String, ArrayList<Line>> map = new HashMap<>();
-        //map.put("lines", lines);
+        //ручное добавление станций с линий 8а/11
+        Line elevenLine = null;
+        for(Line ln : lines){
+            if(ln.getNumber().equals("11")){
+                elevenLine = ln;
+            }
+        }
+        addStationsToElevenLine(elevenLine);
 
         for(Line lns : lines){
             List<Station> stat = lns.getStations();
@@ -93,26 +97,23 @@ public class Main {
             pFJ.addStations(lns.getNumber(), stationsNames);
         }
 
-        //addConnections(trUnderground);
-
+        //запись в JSON
         try(Writer writer = new FileWriter(filePath)){
             gson.toJson(pFJ, writer);
         }
 
-        //lines.forEach(System.out::println);
-        //stations.forEach(System.out::println);
+        System.out.println("Done");
     }
 
     private static Document getPage() throws IOException {
-        //String url = "https://ru.wikipedia.org/wiki/%D0%A1%D0%BF%D0%B8%D1%81%D0%BE%D0%BA_%D1%81%D1%82%D0%B0%D0%BD%D1%86%D0%B8%D0%B9_%D0%9C%D0%BE%D1%81%D0%BA%D0%BE%D0%B2%D1%81%D0%BA%D0%BE%D0%B3%D0%BE_%D0%BC%D0%B5%D1%82%D1%80%D0%BE%D0%BF%D0%BE%D0%BB%D0%B8%D1%82%D0%B5%D0%BD%D0%B0";
-
+        //Вариант с подключение к сайту напрямую
+        //String url = "https://clck.ru/MCHxP";
         //Document page = Jsoup.parse(new URL(url), 3000);
 
         String filePath = "src\\main\\resources\\data\\site.html";
         String htmlFile = parseFile(filePath);
-        Document page = Jsoup.parse(htmlFile);
 
-        return page;
+        return Jsoup.parse(htmlFile);
     }
 
     private static String parseFile(String path){
@@ -126,43 +127,63 @@ public class Main {
         return builder.toString();
     }
 
+    private static void addStationsToElevenLine(Line line){
+        Station shelepiha = new Station("Шелепиха", line);
+        stations.add(shelepiha);
+        line.addStation(shelepiha);
+        Station horosh = new Station("Хорошёвская", line);
+        stations.add(horosh);
+        line.addStation(horosh);
+        Station CSKA = new Station("ЦСКА", line);
+        stations.add(CSKA);
+        line.addStation(CSKA);
+        Station petro = new Station("Петровский парк", line);
+        stations.add(petro);
+        line.addStation(petro);
+        Station savel = new Station("Савёловская", line);
+        stations.add(savel);
+        line.addStation(savel);
+    }
+
     private static void addConnections(Elements trElement){
         for(int i = 1; i < trElement.size(); i++) {
-            String stationName;
-            if(trElement.get(i).select("td").get(1).select("span").size() == 1){
-                stationName = trElement.get(i).select("td").get(1).select("span").text();
-            }
-            else{
-                stationName = trElement.get(i).select("td").get(1).text();
-            }
-            Station station = null;
-            for(Station st : stations){
-                if(st.getName().equals(stationName)){
-                    station = st;
+            if(!(trElement.get(i).select("td").select("span").isEmpty())) {
+                String stationName;
+                if (trElement.get(i).select("td").get(1).select("span").size() == 1) {
+                    stationName = trElement.get(i).select("td").get(1).select("span").text();
+                } else {
+                    stationName = trElement.get(i).select("td").get(1).text();
                 }
-            }
-            ArrayList<Station> connectStations = new ArrayList<>();
-            if (!(trElement.get(i).select("td").get(3).attr("data-sort-value").equals("Infinity"))) {
-                Elements elements = trElement.get(i).select("td").get(3).select("span");
-                //System.out.println(elements.get(1).select("a[href]").attr("href") + "  =  " + elements.size());
-                if (elements.size() == 2) {
-                    String attr = elements.get(1).select("a[href]").attr("href");
-                    String connectionStationName = attrToName(attr);
-                    Station connectStation = null;
-                    for(Station st : stations){
-                        if(st.getName().equals(connectionStationName)){
-                            connectStation = st;
-                        }
+                Station station = null;
+                for (Station st : stations) {
+                    if (st.getName().equals(stationName)) {
+                        station = st;
                     }
-
-                    connectStations.add(connectStation);
-                    connectStations.add(station);
-                    pFJ.addConnections(connectStations);
+                }
+                ArrayList<Station> connectStations = new ArrayList<>();
+                if (!(trElement.get(i).select("td").get(3).attr("data-sort-value").equals("Infinity"))) {
+                    Elements elements = trElement.get(i).select("td").get(3).select("span");
+                    if (elements.size() == 2) {
+                        String stationConnectionNumber = elements.get(0).text();
+                        String attr = elements.get(1).select("a[href]").attr("href");
+                        String connectionStationName = attrToName(attr);
+                        Station connectStation = null;
+                        for (Station st : stations) {
+                            if (st.getName().equals(connectionStationName) && st.getLine().getNumber().equals(stationConnectionNumber)) {
+                                connectStation = st;
+                            }
+                        }
+                        connectStations.add(connectStation);
+                        connectStations.add(station);
+                        pFJ.addConnections(connectStations);
+                    }
+                    //else if(elements.size() == 4)/else if(elements.size() == 6)
                 }
             }
         }
     }
 
+    //вспомогательный метод для определения названий пересадок
     private static String attrToName(String attr){
         String attrCrop = attr.substring(attr.lastIndexOf("/")+1, attr.indexOf("(")-1);
         String decoderString = "";
