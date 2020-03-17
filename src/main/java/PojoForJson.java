@@ -10,7 +10,7 @@ public class PojoForJson {
     @Expose
     private Map<String, String[]> stations = new HashMap<>();
 
-    @Expose
+    //@Expose
     private ArrayList<ArrayList<Station>> connections = new ArrayList<>();
 
     @Expose

@@ -19,7 +19,7 @@ import java.util.*;
 
 public class Main {
 
-    private static final String filePath = "F:\\Java Projects\\ParseMetroMoskow\\src\\main\\resources\\mapMetro4.json";
+    private static final String filePath = "F:\\Java Projects\\ParseMetroMoskow\\src\\main\\resources\\mapMetro5.json";
     private static ArrayList<Line> lines = new ArrayList<>();
     private static TreeSet<Station> stations;
     private static PojoForJson pFJ = new PojoForJson();
@@ -27,60 +27,62 @@ public class Main {
     public static void main(String[] args) throws IOException {
         Document page = getPage();
 
-        Element tableStandard = page.select("table[class~=(standard)+]").first();
-        Element tBody = tableStandard.select("tbody").first();
-        Elements tr = tBody.select("tr");
+        Elements tableStandard = page.select("table[class~=(standard)+]");
 
         stations = new TreeSet<>(Comparator.comparing(Station::getName));
 
         GsonBuilder builder = new GsonBuilder().excludeFieldsWithoutExposeAnnotation();
         Gson gson = builder.create();
 
-        for(int i = 1; i < tr.size(); i++){
-            String stationName;
-            String lineNumber = tr.get(i).select("td").select("span").get(0).text();
-            String lineName = tr.get(i).select("td").get(0).select("a[href]").attr("title");
-            Line line;
-            if(!lines.isEmpty()){
-                if (lines.stream().anyMatch(element -> element.getName().equals(lineName))){
-                    line = lines.stream().filter(element -> element.getName().equals(lineName)).findFirst().get();
-                }
-                else{
-                    line = new Line(lineNumber, lineName);
-                    lines.add(line);
-                    String colorNameAttr = tr.get(i).select("td").get(0).attr("style");
-                    if(!colorNameAttr.isEmpty()) {
-                        String colorName = colorNameAttr.substring(colorNameAttr.indexOf("#"));
-                        System.out.println(line.getName() + " " + colorName);
-                        line.setColor(colorName);
+        for(int y = 0; y < tableStandard.size(); y++) {
+            Element tBodyUnderground = tableStandard.get(y).select("tbody").first();
+            Elements trUnderground = tBodyUnderground.select("tr");
+            for (int i = 1; i < trUnderground.size(); i++) {
+                String stationName;
+                if(!(trUnderground.get(i).select("td").select("span").isEmpty())) {
+                    String lineNumber = trUnderground.get(i).select("td").select("span").get(0).text();
+                    String lineName = trUnderground.get(i).select("td").get(0).select("a[href]").attr("title");
+                    Line line;
+                    if (!lines.isEmpty()) {
+                        if (lines.stream().anyMatch(element -> element.getName().equals(lineName))) {
+                            line = lines.stream().filter(element -> element.getName().equals(lineName)).findFirst().get();
+                        } else {
+                            line = new Line(lineNumber, lineName);
+                            lines.add(line);
+                            String colorNameAttr = trUnderground.get(i).select("td").get(0).attr("style");
+                            if (!colorNameAttr.isEmpty()) {
+                                String colorName = colorNameAttr.substring(colorNameAttr.indexOf("#"));
+                                System.out.println(line.getName() + " " + colorName);
+                                line.setColor(colorName);
+                            }
+                            pFJ.addLines(line);
+                        }
+                    } else {
+                        line = new Line(lineNumber, lineName);
+                        lines.add(line);
+                        String colorNameAttr = trUnderground.get(i).select("td").get(0).attr("style");
+                        if (!colorNameAttr.isEmpty()) {
+                            String colorName = colorNameAttr.substring(colorNameAttr.indexOf("#"));
+                            System.out.println(line.getName() + " " + colorName);
+                            line.setColor(colorName);
+                            pFJ.addLines(line);
+                        }
                     }
-                    pFJ.addLines(line);
+                    if (trUnderground.get(i).select("td").get(1).select("span").size() == 1) {
+                        stationName = trUnderground.get(i).select("td").get(1).select("span").text();
+                    } else {
+                        stationName = trUnderground.get(i).select("td").get(1).text();
+                    }
+                    Station station = new Station(stationName, line);
+                    stations.add(station);
+                    line.addStation(station);
                 }
             }
-            else{
-                line = new Line(lineNumber, lineName);
-                lines.add(line);
-                String colorNameAttr = tr.get(i).select("td").get(0).attr("style");
-                if(!colorNameAttr.isEmpty()) {
-                    String colorName = colorNameAttr.substring(colorNameAttr.indexOf("#"));
-                    System.out.println(line.getName() + " " + colorName);
-                    line.setColor(colorName);
-                    pFJ.addLines(line);
-                }
-            }
-            if(tr.get(i).select("td").get(1).select("span").size() == 1){
-                stationName = tr.get(i).select("td").get(1).select("span").text();
-            }
-            else{
-                stationName = tr.get(i).select("td").get(1).text();
-            }
-            Station station = new Station(stationName, line);
-            stations.add(station);
-            line.addStation(station);
+
         }
 
-        Map<String, ArrayList<Line>> map = new HashMap<>();
-        map.put("lines", lines);
+        //Map<String, ArrayList<Line>> map = new HashMap<>();
+        //map.put("lines", lines);
 
         for(Line lns : lines){
             List<Station> stat = lns.getStations();
@@ -91,7 +93,7 @@ public class Main {
             pFJ.addStations(lns.getNumber(), stationsNames);
         }
 
-        addConnections(tr);
+        //addConnections(trUnderground);
 
         try(Writer writer = new FileWriter(filePath)){
             gson.toJson(pFJ, writer);
@@ -142,8 +144,9 @@ public class Main {
             ArrayList<Station> connectStations = new ArrayList<>();
             if (!(trElement.get(i).select("td").get(3).attr("data-sort-value").equals("Infinity"))) {
                 Elements elements = trElement.get(i).select("td").get(3).select("span");
-                if (elements.size() == 1) {
-                    String attr = elements.get(1).attr("a[href]");
+                //System.out.println(elements.get(1).select("a[href]").attr("href") + "  =  " + elements.size());
+                if (elements.size() == 2) {
+                    String attr = elements.get(1).select("a[href]").attr("href");
                     String connectionStationName = attrToName(attr);
                     Station connectStation = null;
                     for(Station st : stations){
@@ -151,21 +154,29 @@ public class Main {
                             connectStation = st;
                         }
                     }
+
                     connectStations.add(connectStation);
                     connectStations.add(station);
+                    pFJ.addConnections(connectStations);
                 }
             }
-            pFJ.addConnections(connectStations);
         }
     }
 
     private static String attrToName(String attr){
         String attrCrop = attr.substring(attr.lastIndexOf("/")+1, attr.indexOf("(")-1);
-        String connectionStationName = null;
+        String decoderString = "";
         try {
-            connectionStationName = java.net.URLDecoder.decode(attrCrop, StandardCharsets.UTF_8.name());
+            decoderString = java.net.URLDecoder.decode(attrCrop, StandardCharsets.UTF_8.name());
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
+        }
+        String connectionStationName;
+        if(decoderString.contains("_")){
+            connectionStationName = decoderString.replace("_", " ");
+        }
+        else {
+            connectionStationName = decoderString;
         }
         return connectionStationName;
     }
