@@ -7,7 +7,7 @@ import java.io.*;
 import java.util.*;
 
 public class Main {
-    private static String dataFile = "F:\\Java Projects\\ParseMetroMoskow\\src\\main\\resources\\mapMetro5.json";
+    private static String dataFile = "src\\main\\resources\\mapMetro5.json";
     private static Scanner scanner;
     private static ArrayList<Station> stationList;
     private static PojoForJson pojo;
@@ -57,8 +57,8 @@ public class Main {
         {
             System.out.println(message);
             String line = scanner.nextLine().trim();
-            if(stationList.stream().anyMatch(elem -> elem.getName().equals(line))){
-                if(stationList.stream().filter(elem -> elem.getName().equals(line)).count() > 1)
+            if(stationList.stream().anyMatch(elem -> elem.getName().equalsIgnoreCase(line))){
+                if(stationList.stream().filter(elem -> elem.getName().equalsIgnoreCase(line)).count() > 1)
                 {
                     System.out.print("Уточните номер линии. Список номеров линий: ");
                     ArrayList<Line> lines = pojo.getLinesList();
@@ -71,7 +71,7 @@ public class Main {
                         System.out.println("Номер линии указано некорректно.");
                     }
                 }
-                else return stationList.stream().filter(elem -> elem.getName().equals(line)).findFirst().get();
+                else return stationList.stream().filter(elem -> elem.getName().equalsIgnoreCase(line)).findFirst().get();
             }
             System.out.println("Станция не найдена :(");
         }

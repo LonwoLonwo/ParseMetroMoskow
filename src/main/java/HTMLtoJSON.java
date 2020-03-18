@@ -19,7 +19,7 @@ import java.util.Comparator;
 import java.util.List;
 
 public class HTMLtoJSON {
-    private static final String filePath = "F:\\Java Projects\\ParseMetroMoskow\\src\\main\\resources\\mapMetro5.json";
+    private static final String filePath = "src\\main\\resources\\mapMetro5.json";
     private static ArrayList<Line> lines = new ArrayList<>();
     private static ArrayList<Station> stations;
     private static PojoForJson pFJ = new PojoForJson();
