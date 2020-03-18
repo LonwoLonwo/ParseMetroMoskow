@@ -33,6 +33,11 @@ public class Station
 
     @Override
     public boolean equals(Object obj) {
-        return super.equals(obj);
+        if(this == obj) return true;
+        if (obj == null || getClass() != obj.getClass()) return false;
+
+        Station station = (Station) obj;
+
+        return getName().equals(station.getName()) && getLine().getNumber().equals(station.getLine().getNumber());
     }
 }
