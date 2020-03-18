@@ -56,4 +56,8 @@ public class PojoForJson {
         lines.add(line);
     }
 
+    public ArrayList<Line> getLinesList(){
+        return lines;
+    }
+
 }

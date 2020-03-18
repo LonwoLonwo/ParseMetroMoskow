@@ -1,5 +1,6 @@
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import core.Line;
 import core.Station;
 
 import java.io.*;
@@ -57,7 +58,20 @@ public class Main {
             System.out.println(message);
             String line = scanner.nextLine().trim();
             if(stationList.stream().anyMatch(elem -> elem.getName().equals(line))){
-                return stationList.stream().filter(elem -> elem.getName().equals(line)).findFirst().get();
+                if(stationList.stream().filter(elem -> elem.getName().equals(line)).count() > 1)
+                {
+                    System.out.print("Уточните номер линии. Список номеров линий: ");
+                    ArrayList<Line> lines = pojo.getLinesList();
+                    lines.forEach(el -> System.out.print(el.getNumber() + "  "));
+                    String lineNumber = scanner.nextLine().trim();
+                    if(lines.stream().anyMatch(elem -> elem.getNumber().equals(lineNumber))){
+                        return stationList.stream().filter(elem -> elem.getName().equals(line)).filter(elem -> elem.getLine().getNumber().equals(lineNumber)).findFirst().get();
+                    }
+                    else{
+                        System.out.println("Номер линии указано некорректно.");
+                    }
+                }
+                else return stationList.stream().filter(elem -> elem.getName().equals(line)).findFirst().get();
             }
             System.out.println("Станция не найдена :(");
         }
