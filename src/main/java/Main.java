@@ -61,10 +61,10 @@ public class Main {
                 if(stationList.stream().filter(elem -> elem.getName().equalsIgnoreCase(line)).count() > 1)
                 {
                     System.out.print("Уточните номер линии. Список номеров линий: ");
-                    ArrayList<Line> lines = pojo.getLinesList();
-                    lines.forEach(el -> System.out.print(el.getNumber() + "  "));
+                    HashMap<String, Line> lines = pojo.getLinesList();
+                    lines.forEach((key, value) -> System.out.print(key + "  "));
                     String lineNumber = scanner.nextLine().trim();
-                    if(lines.stream().anyMatch(elem -> elem.getNumber().equals(lineNumber))){
+                    if(lines.containsKey(lineNumber)){
                         return stationList.stream().filter(elem -> elem.getName().equals(line)).filter(elem -> elem.getLine().getNumber().equals(lineNumber)).findFirst().get();
                     }
                     else{

@@ -14,13 +14,11 @@ import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 
 public class HTMLtoJSON {
     private static final String filePath = "src\\main\\resources\\mapMetro5.json";
-    private static ArrayList<Line> lines = new ArrayList<>();
+    private static HashMap<String, Line> lines = new HashMap();
     private static ArrayList<Station> stations;
     private static PojoForJson pFJ = new PojoForJson();
 
@@ -34,38 +32,27 @@ public class HTMLtoJSON {
         GsonBuilder builder = new GsonBuilder().excludeFieldsWithoutExposeAnnotation();
         Gson gson = builder.create();
 
-        for(int y = 0; y < tableStandard.size(); y++) {
-            Element tBodyUnderground = tableStandard.get(y).select("tbody").first();
+        for (Element element : tableStandard) {
+            Element tBodyUnderground = element.select("tbody").first();
             Elements trUnderground = tBodyUnderground.select("tr");
             for (int i = 1; i < trUnderground.size(); i++) {
                 String stationName;
-                if(!(trUnderground.get(i).select("td").select("span").isEmpty())) {
+                if (!(trUnderground.get(i).select("td").select("span").isEmpty())) {
                     String lineNumber = trUnderground.get(i).select("td").select("span").get(0).text();
                     String lineName = trUnderground.get(i).select("td").get(0).select("a[href]").attr("title");
                     Line line;
-                    if (!lines.isEmpty()) {
-                        if (lines.stream().anyMatch(element -> element.getName().equals(lineName))) {
-                            line = lines.stream().filter(element -> element.getName().equals(lineName)).findFirst().get();
-                        } else {
-                            line = new Line(lineNumber, lineName);
-                            lines.add(line);
-                            String colorNameAttr = trUnderground.get(i).select("td").get(0).attr("style");
-                            if (!colorNameAttr.isEmpty()) {
-                                String colorName = colorNameAttr.substring(colorNameAttr.indexOf("#"));
-                                line.setColor(colorName);
-                            }
-                            pFJ.addLines(line);
-                        }
-                    } else {
+                    if (lines.isEmpty() || !lines.containsKey(lineNumber)) {
                         line = new Line(lineNumber, lineName);
-                        lines.add(line);
+                        lines.put(lineNumber, line);
                         String colorNameAttr = trUnderground.get(i).select("td").get(0).attr("style");
                         if (!colorNameAttr.isEmpty()) {
                             String colorName = colorNameAttr.substring(colorNameAttr.indexOf("#"));
                             line.setColor(colorName);
-                            pFJ.addLines(line);
                         }
+                    } else {
+                        line = lines.get(lineNumber);
                     }
+                    pFJ.addLines(lineNumber, line);
                     if (trUnderground.get(i).select("td").get(1).select("span").size() == 1) {
                         stationName = trUnderground.get(i).select("td").get(1).select("span").text();
                     } else {
@@ -74,28 +61,28 @@ public class HTMLtoJSON {
                     Station station = new Station(stationName, line);
                     stations.add(station);
                     line.addStation(station);
+                    if (trUnderground.get(i).select("td").get(0).select("span").size() > 3) {
+                        String lnNumber = trUnderground.get(i).select("td").get(0).select("span").get(2).text();
+                        if (lines.containsKey(lineNumber)) {
+                            Line anotherLine = lines.get(lnNumber);
+                            Station dopStation = new Station(stationName, lines.get(lnNumber));
+                            stations.add(dopStation);
+                            anotherLine.addStation(dopStation);
+                        }
+                    }
                 }
             }
             //addConnections(trUnderground);
         }
         stations.sort(Comparator.comparing(Station::getName));
 
-        //ручное добавление станций с линий 8а/11
-        Line elevenLine = null;
-        for(Line ln : lines){
-            if(ln.getNumber().equals("11")){
-                elevenLine = ln;
-            }
-        }
-        addStationsToElevenLine(elevenLine);
-
-        for(Line lns : lines){
-            List<Station> stat = lns.getStations();
+        for(Map.Entry<String, Line> lns: lines.entrySet()){
+            List<Station> stat = lns.getValue().getStations();
             String[] stationsNames = new String[stat.size()];
             for(int i = 0; i < stat.size(); i++){
                 stationsNames[i] = stat.get(i).getName();
             }
-            pFJ.addStations(lns.getNumber(), stationsNames);
+            pFJ.addStations(lns.getKey(), stationsNames);
         }
 
         //запись в JSON
@@ -126,24 +113,6 @@ public class HTMLtoJSON {
             e.printStackTrace();
         }
         return builder.toString();
-    }
-
-    private static void addStationsToElevenLine(Line line){
-        Station shelepiha = new Station("Шелепиха", line);
-        stations.add(shelepiha);
-        line.addStation(shelepiha);
-        Station horosh = new Station("Хорошёвская", line);
-        stations.add(horosh);
-        line.addStation(horosh);
-        Station CSKA = new Station("ЦСКА", line);
-        stations.add(CSKA);
-        line.addStation(CSKA);
-        Station petro = new Station("Петровский парк", line);
-        stations.add(petro);
-        line.addStation(petro);
-        Station savel = new Station("Савёловская", line);
-        stations.add(savel);
-        line.addStation(savel);
     }
 
     private static void addConnections(Elements trElement){

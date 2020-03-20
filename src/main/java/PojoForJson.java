@@ -12,7 +12,7 @@ public class PojoForJson {
     private ArrayList<ArrayList<Station>> connections = new ArrayList<>();
 
     @Expose
-    private ArrayList<Line> lines = new ArrayList<>();
+    private HashMap<String, Line> lines = new HashMap<>();
 
     public void addStations(String lineNumber, String[] stationsName){
         stations.put(lineNumber, stationsName);
@@ -21,7 +21,7 @@ public class PojoForJson {
     public List<Station> getStationsOneLine(String lineNumber){
         if(stations.containsKey(lineNumber)){
             List<Station> stationsOneLine = new ArrayList<>();
-            Line line = lines.stream().filter(element -> element.getNumber().equals(lineNumber)).findFirst().get();
+            Line line = lines.get(lineNumber);
             String[] stationsName = stations.get(lineNumber);
             for(String name : stationsName){
                 stationsOneLine.add(new Station(name, line));
@@ -38,7 +38,7 @@ public class PojoForJson {
         ArrayList<Station> allStations = new ArrayList<>();
         for(Map.Entry<String, String[]> map : stations.entrySet()){
             String lineNumber = map.getKey();
-            Line line = lines.stream().filter(element -> element.getNumber().equals(lineNumber)).findFirst().get();
+            Line line = lines.get(lineNumber);
             String[] stationsName = map.getValue();
             for(String name : stationsName){
                 allStations.add(new Station(name, line));
@@ -52,11 +52,11 @@ public class PojoForJson {
         connections.add(connect);
     }
 
-    public void addLines(Line line){
-        lines.add(line);
+    public void addLines(String lineNumber, Line line){
+        lines.put(lineNumber, line);
     }
 
-    public ArrayList<Line> getLinesList(){
+    public HashMap<String, Line> getLinesList(){
         return lines;
     }
 
